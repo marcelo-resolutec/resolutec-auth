@@ -1,6 +1,6 @@
 {
   "name": "@resolutec/auth",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Login único dos apps Resolutec: o app cliente entra pelo login do Portal Resolutec (ADR-025).",
   "private": true,
   "type": "module",

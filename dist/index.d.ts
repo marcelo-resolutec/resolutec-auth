@@ -44,6 +44,12 @@ export declare class ErroAuth extends Error {
     codigo: string;
     constructor(status: number, codigo: string, message: string);
 }
+/**
+ * Redireciona **no navegador** (200 + HTML), nunca com 302: o proxy do Studio Creator segue
+ * respostas 302 no servidor e entrega só a resposta final, sem os cookies do meio. Assim o
+ * navegador de fato vai ao portal (onde está a sessão) e volta ao app.
+ */
+export declare function redirecionarNoNavegador(res: ServerResponse, destino: string): void;
 export declare function criarAuth(config: ConfigAuth): {
     iniciarLogin: (res: ServerResponse, destino?: string) => void;
     concluirLogin: (req: IncomingMessage, res: ServerResponse) => Promise<string>;

@@ -20,7 +20,7 @@ Repositório **público**, versão por tag (o `dist/` vai no repositório, já c
 
 ```json
 "dependencies": {
-  "@resolutec/auth": "https://github.com/marcelo-resolutec/resolutec-auth/archive/refs/tags/v1.0.0.tar.gz"
+  "@resolutec/auth": "https://github.com/marcelo-resolutec/resolutec-auth/archive/refs/tags/v1.1.0.tar.gz"
 }
 ```
 

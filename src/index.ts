@@ -74,10 +74,45 @@ function adicionarCookie(res: ServerResponse, valor: string): void {
   res.setHeader("Set-Cookie", [...lista, valor]);
 }
 
-function redirecionar(res: ServerResponse, destino: string): void {
-  res.statusCode = 302;
-  res.setHeader("Location", destino);
-  res.end();
+function escaparHtml(v: string): string {
+  return v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * Redireciona **no navegador** (200 + HTML), nunca com 302: o proxy do Studio Creator segue
+ * respostas 302 no servidor e entrega só a resposta final, sem os cookies do meio. Assim o
+ * navegador de fato vai ao portal (onde está a sessão) e volta ao app.
+ */
+export function redirecionarNoNavegador(res: ServerResponse, destino: string): void {
+  res.statusCode = 200;
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  const attr = escaparHtml(destino);
+  const js = JSON.stringify(destino).replace(/</g, "\\u003c");
+  res.end(
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex">` +
+      `<meta http-equiv="refresh" content="0;url=${attr}"><title>Entrando…</title></head>` +
+      `<body style="font:15px system-ui,sans-serif;padding:24px;color:#55637a">Entrando… ` +
+      `<a href="${attr}">continuar</a><script>location.replace(${js})</script></body></html>`,
+  );
+}
+
+/** Página de erro do login (sem acesso, login expirado…), com "Tentar de novo". */
+function paginaDeErro(res: ServerResponse, status: number, mensagem: string, tentarDeNovo: string): void {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.end(
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+      `<title>Não foi possível entrar</title><style>` +
+      `body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#f6f8fa;color:#121c2d;font:15px/1.55 Inter,"Segoe UI",system-ui,sans-serif;padding:24px 16px}` +
+      `main{max-width:440px;background:#fff;border:1px solid #dde2ea;border-radius:24px;padding:32px}` +
+      `h1{margin:0 0 8px;font-size:22px;letter-spacing:-.02em}p{margin:0 0 24px;color:#55637a}` +
+      `a{display:inline-flex;align-items:center;height:40px;padding:0 18px;border-radius:999px;background:#2459ca;color:#fff;font-weight:600;text-decoration:none}` +
+      `@media(prefers-color-scheme:dark){body{background:#0a0f19;color:#f2f5f8}main{background:#111927;border-color:#232d3e}p{color:#9faabc}a{background:#3e71e0}}` +
+      `</style></head><body><main><h1>Não foi possível entrar</h1><p>${escaparHtml(mensagem)}</p>` +
+      `<a href="${escaparHtml(tentarDeNovo)}">Tentar de novo</a></main></body></html>`,
+  );
 }
 
 function responderJson(res: ServerResponse, status: number, corpo: unknown): void {
@@ -168,7 +203,7 @@ export function criarAuth(config: ConfigAuth) {
     url.searchParams.set("app", config.clientId);
     url.searchParams.set("redirect_uri", config.redirectUri);
     url.searchParams.set("state", state);
-    redirecionar(res, url.toString());
+    redirecionarNoNavegador(res, url.toString());
   }
 
   /** Volta do portal: confere o state, troca o código pelo token e grava a sessão do app. Devolve o destino. */
@@ -254,10 +289,10 @@ export function criarAuth(config: ConfigAuth) {
       if (rota === "/login") {
         iniciarLogin(res, url.searchParams.get("destino") ?? "/");
       } else if (rota === "/callback") {
-        redirecionar(res, await concluirLogin(req, res));
+        redirecionarNoNavegador(res, await concluirLogin(req, res));
       } else if (rota === "/logout") {
         sair(res);
-        redirecionar(res, "/");
+        redirecionarNoNavegador(res, "/");
       } else if (rota === "/me") {
         const u = await exigirUsuario(req, res);
         if (u) responderJson(res, 200, u);
@@ -266,7 +301,9 @@ export function criarAuth(config: ConfigAuth) {
       }
     } catch (err) {
       if (!(err instanceof ErroAuth)) throw err;
-      responderJson(res, err.status, { success: false, error: err.codigo, message: err.message });
+      // Login e volta do portal são navegação: página legível. /me é chamada do front: JSON.
+      if (rota === "/me") responderJson(res, err.status, { success: false, error: err.codigo, message: err.message });
+      else paginaDeErro(res, err.status, err.message, `${prefixo}/login`);
     }
     return true;
   }
