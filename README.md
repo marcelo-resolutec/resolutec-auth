@@ -30,7 +30,7 @@ Repositório **público**, versão por tag (o `dist/` vai no repositório, já c
 
 ```json
 "dependencies": {
-  "@resolutec/auth": "https://github.com/marcelo-resolutec/resolutec-auth/archive/refs/tags/v1.2.0.tar.gz"
+  "@resolutec/auth": "https://github.com/marcelo-resolutec/resolutec-auth/archive/refs/tags/v1.2.1.tar.gz"
 }
 ```
 
@@ -94,7 +94,7 @@ No front: chamar `/api/auth/me`; se vier **401**, ir para
 
 - **Nunca** escrever em `main.*` do banco: usuários e acesso são do portal.
 - Cada app usa o próprio schema (`chamados.*`, `monitoramento.*`…).
-- Sair do app (`/api/auth/logout`) não sai do portal.
+- Sair do app (`/api/auth/logout`) não sai do portal: mostra a página "Você saiu deste app" com "Entrar de novo" e "Ir para o Portal".
 
 ## Versões
 
@@ -103,6 +103,7 @@ No front: chamar `/api/auth/me`; se vier **401**, ir para
 | 1.0.0 | primeira; modo código, redirecionamento com 302 |
 | 1.1.0 | redireciona pelo navegador (200 + HTML); página de erro |
 | 1.2.0 | **modo token** (`SSO_PUBLIC_KEY`): token pelo navegador, sem chamada do app ao portal |
+| 1.2.1 | "Sair deste app" mostra a página "Você saiu deste app" (antes voltava para `/` e o app entrava de novo sozinho pelo portal) |
 
 ## Publicar uma versão
 

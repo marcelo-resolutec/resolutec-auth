@@ -58,6 +58,22 @@ function blocoDeErro(mensagem, tentarDeNovo, oculto) {
     return (`<main id="erro"${oculto ? " hidden" : ""}><h1>Não foi possível entrar</h1><p id="msg">${escaparHtml(mensagem)}</p>` +
         `<a href="${escaparHtml(tentarDeNovo)}">Tentar de novo</a></main>`);
 }
+/**
+ * Depois de sair: página parada, sem entrar de novo sozinha. Se voltasse para "/", o app
+ * veria que não há sessão e entraria de novo pelo portal (a sessão do portal continua),
+ * e o "Sair" pareceria não funcionar.
+ */
+function paginaDeSaida(res, entrarDeNovo, portal) {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.end(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+        `<title>Você saiu deste app</title><style>${ESTILO_PAGINA}.acoes{display:flex;flex-wrap:wrap;gap:8px}` +
+        `a.secundario{background:#eff4fd;color:#2459ca}@media(prefers-color-scheme:dark){a.secundario{background:#1c2945;color:#a8c5fa}}</style></head>` +
+        `<body><main><h1>Você saiu deste app</h1><p>Sua sessão no Portal Resolutec continua aberta. Para sair de tudo, saia pelo portal.</p>` +
+        `<div class="acoes"><a href="${escaparHtml(entrarDeNovo)}">Entrar de novo</a>` +
+        `<a class="secundario" href="${escaparHtml(portal)}">Ir para o Portal</a></div></main></body></html>`);
+}
 /** Página de erro do login (sem acesso, login expirado…), com "Tentar de novo". */
 function paginaDeErro(res, status, mensagem, tentarDeNovo) {
     res.statusCode = status;
@@ -385,7 +401,7 @@ export function criarAuth(config) {
             }
             else if (rota === "/logout") {
                 sair(res);
-                redirecionarNoNavegador(res, "/");
+                paginaDeSaida(res, tentarDeNovo, portal);
             }
             else if (rota === "/me") {
                 const u = await exigirUsuario(req, res);
