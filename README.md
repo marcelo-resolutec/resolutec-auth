@@ -15,13 +15,21 @@ na hora, sem ver tela nenhuma.
 
 ## Instalar
 
-Repositório privado, versão por tag (o `dist/` vai no repositório, já compilado):
+Repositório **público**, versão por tag (o `dist/` vai no repositório, já compilado). Instale pelo
+**arquivo da versão**, sem Git:
 
 ```json
 "dependencies": {
-  "@resolutec/auth": "github:marcelo-resolutec/resolutec-auth#v1.0.0"
+  "@resolutec/auth": "https://github.com/marcelo-resolutec/resolutec-auth/archive/refs/tags/v1.0.0.tar.gz"
 }
 ```
+
+> Não use `github:...` nem `git+https://...` no Studio Creator: a instalação de lá roda sem SSH e sem
+> credencial do GitHub, e o instalador tenta SSH para repositórios do GitHub (erro 128). O arquivo da
+> versão é baixado por HTTPS comum.
+>
+> O pacote é público de propósito: ele **não tem segredo** (só confere o token com a chave pública do
+> portal). Segredos ficam nas variáveis de cada app. Nunca colocar chave, segredo ou endereço interno aqui.
 
 ## Variáveis do app
 
@@ -79,4 +87,4 @@ No front: chamar `/api/auth/me`; se vier **401**, ir para
 
 1. Alterar `src/`, rodar `npm run build` (atualiza `dist/`) e subir a `version` do `package.json`.
 2. Commit com o `dist/`, tag `vX.Y.Z` e push da tag.
-3. Nos apps, trocar `#vX.Y.Z` na dependência e reconstruir no Studio Creator.
+3. Nos apps, trocar `vX.Y.Z` no endereço do arquivo da versão e reconstruir no Studio Creator.
