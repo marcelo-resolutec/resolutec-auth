@@ -2,23 +2,36 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 /**
  * Login único dos apps Resolutec (ADR-025, cofre do Portal).
  *
- * O app não tem tela de login: manda o usuário para o Portal Resolutec, recebe um
- * código, troca o código (com o segredo do app) por um JWT RS256 de 15 min e guarda
- * o JWT num cookie HTTP-only do próprio app. Cada requisição confere a assinatura com
- * a chave pública do portal (/api/sso/jwks). Token vencido = repetir o login: com a
- * sessão do portal valendo, o usuário volta na hora, sem ver a tela de login.
+ * O app não tem tela de login: manda o usuário para o Portal Resolutec e volta com um
+ * JWT RS256 de 15 min, que fica num cookie HTTP-only do próprio app. Cada requisição
+ * confere a assinatura com a chave pública do portal. Token vencido = repetir o login:
+ * com a sessão do portal valendo, o usuário volta na hora, sem ver a tela de login.
  *
- * Só para o servidor do app (middleware do Vite / Node). Sem dependências.
+ * Dois modos:
+ * - **token** (com `publicKey`, o padrão no Studio Creator): o portal entrega o token pelo
+ *   navegador, no fragmento da volta (#access_token=…); a página de volta envia o token ao
+ *   servidor do app, que valida com a chave pública da variável. Nenhuma chamada de
+ *   servidor a servidor — no Creator um app não alcança outro (UND_ERR_CONNECT_TIMEOUT).
+ * - **código** (sem `publicKey`): o servidor do app troca o código no /api/sso/token com o
+ *   segredo e busca a chave em /api/sso/jwks. Só onde o app alcança o portal.
+ *
+ * Todo redirecionamento é feito no navegador (200 + HTML): o proxy do Creator segue 302
+ * no servidor e perde os cookies. Só para o servidor do app (Node). Sem dependências.
  */
 export interface ConfigAuth {
     /** Endereço do portal, sem barra no fim. Ex.: https://portal-resolutec.studio-creator.skyone.cloud */
     portalUrl: string;
     /** Id do app em main.sso_clientes (também é o prefixo das permissões). */
     clientId: string;
-    /** Segredo do app (variável SSO_CLIENT_SECRET; o portal guarda só o hash). */
-    clientSecret: string;
     /** Endereço de volta, cadastrado em main.sso_clientes.redirect_uris. Ex.: https://<app>/api/auth/callback */
     redirectUri: string;
+    /**
+     * Chave pública do portal (variável SSO_PUBLIC_KEY): o JSON do /api/sso/jwks, uma chave JWK
+     * ou um PEM (inteiro ou em base64). Com ela o app usa o **modo token**.
+     */
+    publicKey?: string;
+    /** Segredo do app (variável SSO_CLIENT_SECRET). Só no modo código. */
+    clientSecret?: string;
     /** Cookie só em HTTPS. Padrão: true (use false em http://localhost). */
     cookieSeguro?: boolean;
     /** Prefixo das rotas que `rotas()` atende. Padrão: /api/auth */
@@ -51,8 +64,10 @@ export declare class ErroAuth extends Error {
  */
 export declare function redirecionarNoNavegador(res: ServerResponse, destino: string): void;
 export declare function criarAuth(config: ConfigAuth): {
+    modo: "token" | "codigo";
     iniciarLogin: (res: ServerResponse, destino?: string) => void;
     concluirLogin: (req: IncomingMessage, res: ServerResponse) => Promise<string>;
+    concluirLoginToken: (req: IncomingMessage, res: ServerResponse) => Promise<string>;
     usuario: (req: IncomingMessage) => Promise<UsuarioResolutec | null>;
     exigirUsuario: (req: IncomingMessage, res: ServerResponse) => Promise<UsuarioResolutec | null>;
     consultarPortal: (req: IncomingMessage) => Promise<Record<string, unknown> | null>;
@@ -62,5 +77,8 @@ export declare function criarAuth(config: ConfigAuth): {
 };
 /** Tem a permissão? (o portal já manda só as permissões deste app). */
 export declare function pode(usuario: Pick<UsuarioResolutec, "permissoes">, permissao: string): boolean;
-/** Config a partir das variáveis do app: PORTAL_URL, SSO_CLIENT_ID, SSO_CLIENT_SECRET, SSO_REDIRECT_URI, COOKIE_SECURE. */
+/**
+ * Config a partir das variáveis do app: PORTAL_URL, SSO_CLIENT_ID, SSO_REDIRECT_URI, COOKIE_SECURE e
+ * SSO_PUBLIC_KEY (modo token, o do Studio Creator) ou SSO_CLIENT_SECRET (modo código).
+ */
 export declare function configDoAmbiente(env?: Record<string, string | undefined>): ConfigAuth;
